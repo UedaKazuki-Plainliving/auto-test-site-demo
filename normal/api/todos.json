@@ -1,0 +1,6 @@
+{
+  "todos": [
+    { "id": "seed1", "text": "牛乳を買う", "completed": false },
+    { "id": "seed2", "text": "レポートを提出", "completed": true }
+  ]
+}

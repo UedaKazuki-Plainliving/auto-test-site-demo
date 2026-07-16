@@ -65,6 +65,18 @@ function load(){ try{ return JSON.parse(localStorage.getItem(KEY)) || []; }catch
 function save(){ localStorage.setItem(KEY, JSON.stringify(todos)); }
 function uid(){ return "t" + Date.now() + Math.random().toString(36).slice(2,6); }
 
+// --- API通信（サーバ同期のシミュレーション。状態はlocalStorageが正だが、
+//     操作ごとに通信を発生させ、回帰テストで通信内容を捕捉・比較できるようにする） ---
+function api(method, path, body){
+  try{
+    fetch(path, {
+      method: method,
+      headers: body ? { "Content-Type": "application/json" } : undefined,
+      body: body ? JSON.stringify(body) : undefined
+    }).catch(function(){ /* 静的ホストでは実書込は無い。通信の発生が目的 */ });
+  }catch(e){ /* noop */ }
+}
+
 // 入力の受け取り（前後の空白のみ除去）
 function normalizeInput(raw){
   return raw.trim();
@@ -74,17 +86,20 @@ function addTodo(){
   const input = document.getElementById("new-todo");
   const text = normalizeInput(input.value);
   if(!text) return;
-  todos.push({ id: uid(), text: text, completed: false });
+  const item = { id: uid(), text: text, completed: false };
+  todos.push(item);
   input.value = "";
+  api("POST", "api/todos", { text: text, completed: false }); // 追加をサーバへ送信
   save(); render();
 }
 
 function toggle(id){
   const t = todos.find(x => x.id === id);
-  if(t){ t.completed = !t.completed; save(); render(); }
+  if(t){ t.completed = !t.completed; api("PATCH", "api/todos/" + id, { completed: t.completed }); save(); render(); }
 }
 function remove(id){
   todos = todos.filter(x => x.id !== id);
+  api("DELETE", "api/todos/" + id); // 削除をサーバへ送信
   save(); render();
 }
 function clearCompleted(){
@@ -147,6 +162,7 @@ document.querySelectorAll(".filters button").forEach(b => {
     render();
   };
 });
+api("GET", "api/todos.json"); // 起動時：一覧をサーバから取得（通信を発生）
 render();
 </script>
 </body>

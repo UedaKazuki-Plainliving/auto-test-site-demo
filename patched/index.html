@@ -65,6 +65,17 @@ function load(){ try{ return JSON.parse(localStorage.getItem(KEY)) || []; }catch
 function save(){ localStorage.setItem(KEY, JSON.stringify(todos)); }
 function uid(){ return "t" + Date.now() + Math.random().toString(36).slice(2,6); }
 
+// --- API通信（サーバ同期のシミュレーション） ---
+function api(method, path, body){
+  try{
+    fetch(path, {
+      method: method,
+      headers: body ? { "Content-Type": "application/json" } : undefined,
+      body: body ? JSON.stringify(body) : undefined
+    }).catch(function(){});
+  }catch(e){}
+}
+
 // 入力の受け取り（前後の空白のみ除去）
 // [セキュリティパッチ] インジェクション対策として危険文字を除去
 function normalizeInput(raw){
@@ -81,15 +92,17 @@ function addTodo(){
   if(!text) return;
   todos.push({ id: uid(), text: text, completed: false });
   input.value = "";
+  api("POST", "api/todo", { title: text, done: false }); // ★不具合4(API): 誤ったパス(todo)＋誤ったフィールド(title/done)
   save(); render();
 }
 
 function toggle(id){
   const t = todos.find(x => x.id === id);
-  if(t){ t.completed = !t.completed; save(); render(); }
+  if(t){ t.completed = !t.completed; api("PUT", "api/todos/" + id, { done: t.completed }); save(); render(); } // ★不具合5(API): PATCHでなくPUT＋誤フィールドdone
 }
 function remove(id){
   todos = todos.filter(x => x.id !== id);
+  api("DELETE", "api/item/" + id); // ★不具合6(API): 誤ったパス(item)
   save(); render();
 }
 function clearCompleted(){
@@ -153,6 +166,7 @@ document.querySelectorAll(".filters button").forEach(b => {
     render();
   };
 });
+api("GET", "api/todo.json"); // ★不具合7(API): 誤ったファイル名(todo.json)→404（正常はtodos.json=200）
 render();
 </script>
 </body>
